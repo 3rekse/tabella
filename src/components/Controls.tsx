@@ -5,7 +5,7 @@ import { Play, StepForward, RotateCcw, Save, Upload, AlertCircle } from 'lucide-
 import { clsx } from 'clsx';
 
 export const Controls: React.FC = () => {
-    const { run, step, reset, loadProgram, sourceCode, isRunning, error } = useInterpreterStore();
+    const { run, step, reset, loadProgram, sourceCode, isRunning, error, mode, setMode } = useInterpreterStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleSave = () => {
@@ -13,7 +13,8 @@ export const Controls: React.FC = () => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'program.tbl';
+        const extension = mode === 'GRID' ? 'grd' : 'tbl';
+        a.download = `program.${extension}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -26,7 +27,7 @@ export const Controls: React.FC = () => {
             const reader = new FileReader();
             reader.onload = (ev) => {
                 const text = ev.target?.result as string;
-                loadProgram(text);
+                loadProgram(text, true);
             };
             reader.readAsText(file);
         }
@@ -35,9 +36,22 @@ export const Controls: React.FC = () => {
     return (
         <div className="h-14 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 gap-4 justify-between">
             <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent mr-4">
-                    TABELLA
-                </h1>
+                <img src="/ccla.svg" alt="CCLA Logo" className="h-8 w-auto mr-2" />
+                <div className="relative group mr-4">
+                    <select
+                        value={mode}
+                        onChange={(e) => setMode(e.target.value as 'TABLE' | 'GRID')}
+                        className="appearance-none bg-transparent text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent cursor-pointer outline-none hover:opacity-80 transition-opacity pr-6"
+                    >
+                        <option value="TABLE" className="text-zinc-900 bg-zinc-100">TABLE</option>
+                        <option value="GRID" className="text-zinc-900 bg-zinc-100">GRID</option>
+                    </select>
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-blue-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </div>
+                </div>
 
                 <div className="h-6 w-px bg-zinc-700 mx-2" />
 
@@ -61,7 +75,7 @@ export const Controls: React.FC = () => {
                     <input
                         ref={fileInputRef}
                         type="file"
-                        accept=".tbl"
+                        accept=".tbl,.grd"
                         onChange={handleLoad}
                         className="hidden"
                     />

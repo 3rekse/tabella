@@ -1,9 +1,12 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useInterpreterStore } from '../lib/interpreter';
 import { clsx } from 'clsx';
+import { Eraser, HelpCircle } from 'lucide-react';
+import { HelpModal } from './HelpModal';
 
 export const Editor: React.FC = () => {
-    const { sourceCode, setSourceCode, pc, isRunning, error } = useInterpreterStore();
+    const { sourceCode, setSourceCode, pc, isRunning, error, currentGrid, loadProgram } = useInterpreterStore();
+    const [isHelpOpen, setIsHelpOpen] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Line highlighting logic could be complex with a textarea.
@@ -20,8 +23,28 @@ export const Editor: React.FC = () => {
     return (
         <div className="flex flex-col h-full bg-[#1e1e1e]">
             <div className="bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-400 border-b border-zinc-800 flex justify-between items-center">
-                <span>EDITOR</span>
-                {error && <span className="text-red-500 text-xs truncate max-w-[200px]" title={error}>{error}</span>}
+                <div className="flex items-center gap-3">
+                    <span className="tracking-widest font-bold text-[11px] uppercase opacity-70">Editor</span>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => loadProgram('', false)}
+                            className="p-1 px-1.5 hover:bg-zinc-800 rounded transition-colors flex items-center gap-1.5 group"
+                            title="Clear Code"
+                        >
+                            <Eraser size={14} className="group-hover:text-red-400 transition-colors" />
+                            <span className="text-[10px] hidden sm:inline opacity-0 group-hover:opacity-100 transition-opacity">CLEAR</span>
+                        </button>
+                        <button
+                            onClick={() => setIsHelpOpen(true)}
+                            className="p-1 px-1.5 hover:bg-zinc-800 rounded transition-colors flex items-center gap-1.5 group"
+                            title="Format Help"
+                        >
+                            <HelpCircle size={14} className="group-hover:text-emerald-400 transition-colors" />
+                            <span className="text-[10px] hidden sm:inline opacity-0 group-hover:opacity-100 transition-opacity">HELP</span>
+                        </button>
+                    </div>
+                </div>
+                {error && <span className="text-red-500 text-[10px] font-mono truncate max-w-[200px]" title={error}>{error}</span>}
             </div>
 
             <div className="relative flex-1 overflow-hidden font-mono text-sm leading-6">
@@ -36,7 +59,7 @@ export const Editor: React.FC = () => {
                             key={i}
                             className={clsx(
                                 "w-full px-1 rounded transition-colors duration-150",
-                                i === pc && isRunning ? "bg-yellow-500/20 shadow-[0_0_10px_rgba(234,179,8,0.1)] border-l-2 border-yellow-500" : "transparent"
+                                i === pc && (isRunning || currentGrid !== null) ? "bg-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.2)] border-l-2 border-yellow-500" : "transparent"
                             )}
                         >
                             {/* Invisible text to maintain height */}
@@ -66,6 +89,7 @@ export const Editor: React.FC = () => {
                 <span>Ln {sourceCode.split('\n').length}, Col 0</span>
                 <span>UTF-8</span>
             </div>
+            <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
         </div>
     );
 };

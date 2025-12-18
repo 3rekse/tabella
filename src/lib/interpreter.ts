@@ -13,7 +13,7 @@ export interface Cell {
 
 export type Grid = Cell[][];
 
-export type CommandType = 'START' | 'COLOR';
+export type CommandType = 'START' | 'COLOR' | 'GRID_COLOR';
 
 export interface StartCommand {
     type: 'START';
@@ -33,9 +33,20 @@ export interface ColorCommand {
     lineNumber: number;
 }
 
-export type Command = StartCommand | ColorCommand;
+export interface GridColorCommand {
+    type: 'GRID_COLOR';
+    count: number;
+    color: Color;
+    deltaX: number;
+    deltaY: number;
+    originalLine: string;
+    lineNumber: number;
+}
+
+export type Command = StartCommand | ColorCommand | GridColorCommand;
 
 export interface ProgramState {
+    mode: 'TABLE' | 'GRID';
     sourceCode: string;
     commands: Command[];
     targetGrid: Grid | null; // The goal
@@ -44,16 +55,19 @@ export interface ProgramState {
     isRunning: boolean;
     error: string | null;
     completionStatus: 'idle' | 'success' | 'failure';
+    lastPos: { r: number, c: number };
+    totalMovements: number;
 }
 
 interface InterpreterActions {
+    setMode: (mode: 'TABLE' | 'GRID') => void;
     setSourceCode: (code: string) => void;
     setTargetGrid: (grid: Grid) => void;
     reset: () => void;
     step: () => void;
     run: () => void;
     stop: () => void;
-    loadProgram: (code: string) => void;
+    loadProgram: (code: string, updateTarget?: boolean) => void;
 }
 
 // Helpers
@@ -64,7 +78,7 @@ const createEmptyGrid = (rows: number, cols: number): Grid => {
 };
 
 // Parser
-const parseLine = (line: string, lineNumber: number): Command | null => {
+const parseLine = (line: string, lineNumber: number, mode: 'TABLE' | 'GRID'): Command | null => {
     const trimmed = line.trim();
     if (!trimmed) return null;
 
@@ -80,25 +94,84 @@ const parseLine = (line: string, lineNumber: number): Command | null => {
         };
     }
 
-    // Color Command: count color row col
-    // <numero celle da colorare> <colore R/G/B <numero riga da colorare > >numero colonna da colorare>
-    const colorMatch = trimmed.match(/^(\d+)\s+([RGB])\s+(\d+)\s+(\d+)$/i);
-    if (colorMatch) {
-        return {
-            type: 'COLOR',
-            count: parseInt(colorMatch[1], 10),
-            color: colorMatch[2].toUpperCase() as Color,
-            row: parseInt(colorMatch[3], 10),
-            col: parseInt(colorMatch[4], 10),
-            originalLine: line,
-            lineNumber,
-        };
+    if (mode === 'TABLE') {
+        // Color Command: count color row col
+        const colorMatch = trimmed.match(/^(\d+)\s+([RGB])\s+(\d+)\s+(\d+)$/i);
+        if (colorMatch) {
+            return {
+                type: 'COLOR',
+                count: parseInt(colorMatch[1], 10),
+                color: colorMatch[2].toUpperCase() as Color,
+                row: parseInt(colorMatch[3], 10),
+                col: parseInt(colorMatch[4], 10),
+                originalLine: line,
+                lineNumber,
+            };
+        }
+    } else {
+        // GRID Color Command: count color deltaX deltaY
+        const gridColorMatch = trimmed.match(/^(\d+)\s+([RGB])\s+([+-]?\d+)\s+([+-]?\d+)$/i);
+        if (gridColorMatch) {
+            return {
+                type: 'GRID_COLOR',
+                count: parseInt(gridColorMatch[1], 10),
+                color: gridColorMatch[2].toUpperCase() as Color,
+                deltaX: parseInt(gridColorMatch[3], 10),
+                deltaY: parseInt(gridColorMatch[4], 10),
+                originalLine: line,
+                lineNumber,
+            };
+        }
     }
 
     throw new Error(`Syntax Error on line ${lineNumber + 1}: Invalid command format.`);
 };
 
+/**
+ * Executes a sequence of commands on a fresh grid to determine the final result.
+ * Used for deriving the "Objective" grid from code.
+ */
+const executeCommandsSilently = (commands: Command[]): Grid | null => {
+    let grid: Grid | null = null;
+    let lastPos = { r: -1, c: -1 };
+
+    for (const cmd of commands) {
+        try {
+            if (cmd.type === 'START') {
+                grid = createEmptyGrid(cmd.rows, cmd.cols);
+                lastPos = { r: -1, c: -1 };
+            } else if (cmd.type === 'COLOR' || cmd.type === 'GRID_COLOR') {
+                if (!grid) continue;
+
+                let targetRow, targetCol;
+                if (cmd.type === 'COLOR') {
+                    targetRow = cmd.row;
+                    targetCol = cmd.col;
+                } else {
+                    targetRow = lastPos.r + cmd.deltaY;
+                    targetCol = lastPos.c + cmd.deltaX;
+                }
+
+                // Basic validation for simulation
+                if (targetRow < 0 || targetRow >= grid.length || targetCol < 0 || targetCol >= grid[0].length) {
+                    continue; // Skip invalid commands in simulation
+                }
+
+                const count = Math.min(cmd.count, grid[0].length - targetCol);
+                for (let i = 0; i < count; i++) {
+                    grid[targetRow][targetCol + i] = { color: cmd.color };
+                }
+                lastPos = { r: targetRow, c: targetCol + count - 1 };
+            }
+        } catch (e) {
+            // Ignore errors in simulation
+        }
+    }
+    return grid;
+};
+
 export const useInterpreterStore = create<ProgramState & InterpreterActions>((set, get) => ({
+    mode: 'TABLE',
     sourceCode: '',
     commands: [],
     targetGrid: null,
@@ -107,21 +180,29 @@ export const useInterpreterStore = create<ProgramState & InterpreterActions>((se
     isRunning: false,
     error: null,
     completionStatus: 'idle',
+    lastPos: { r: -1, c: -1 },
+    totalMovements: 0,
+
+    setMode: (mode) => {
+        set({ mode });
+        get().loadProgram(get().sourceCode);
+    },
+
+    setTargetGrid: (grid) => set({ targetGrid: grid }),
 
     setSourceCode: (code) => {
         set({ sourceCode: code });
     },
 
-    setTargetGrid: (grid) => set({ targetGrid: grid }),
-
-    loadProgram: (code) => {
+    loadProgram: (code, updateTarget = false) => {
         try {
+            const mode = get().mode;
             const lines = code.split('\n');
             const commands: Command[] = [];
             let startCmdFound = false;
 
             for (let i = 0; i < lines.length; i++) {
-                const cmd = parseLine(lines[i], i);
+                const cmd = parseLine(lines[i], i, mode);
                 if (cmd) {
                     if (cmd.type === 'START') {
                         if (startCmdFound) {
@@ -131,7 +212,7 @@ export const useInterpreterStore = create<ProgramState & InterpreterActions>((se
                             throw new Error(`Error on line ${i + 1}: Table dimensions exceed max ${MAX_ROWS}x${MAX_COLS}.`);
                         }
                         startCmdFound = true;
-                    } else if (cmd.type === 'COLOR') {
+                    } else if (cmd.type === 'COLOR' || cmd.type === 'GRID_COLOR') {
                         if (!startCmdFound) {
                             throw new Error(`Error on line ${i + 1}: Color command before table definition.`);
                         }
@@ -140,7 +221,25 @@ export const useInterpreterStore = create<ProgramState & InterpreterActions>((se
                 }
             }
 
-            set({ sourceCode: code, commands, error: null, pc: 0, currentGrid: null, completionStatus: 'idle' });
+            const newState: Partial<ProgramState> = {
+                sourceCode: code,
+                commands,
+                error: null,
+                pc: 0,
+                currentGrid: null,
+                completionStatus: 'idle',
+                lastPos: { r: -1, c: -1 },
+                totalMovements: 0
+            };
+
+            if (updateTarget) {
+                const simulatedGrid = executeCommandsSilently(commands);
+                if (simulatedGrid) {
+                    newState.targetGrid = simulatedGrid;
+                }
+            }
+
+            set(newState as ProgramState);
         } catch (e: any) {
             set({ error: e.message });
         }
@@ -157,19 +256,21 @@ export const useInterpreterStore = create<ProgramState & InterpreterActions>((se
                 pc: 0,
                 error: null,
                 isRunning: false,
-                completionStatus: 'idle'
+                completionStatus: 'idle',
+                lastPos: { r: -1, c: -1 },
+                totalMovements: 0
             });
         } else {
-            set({ currentGrid: null, pc: 0, error: null, isRunning: false, completionStatus: 'idle' });
+            set({ currentGrid: null, pc: 0, error: null, isRunning: false, completionStatus: 'idle', lastPos: { r: -1, c: -1 }, totalMovements: 0 });
         }
     },
 
     step: () => {
-        const { commands, currentGrid, pc, error } = get();
+        const state = get();
+        const { commands, currentGrid, pc, error, lastPos, totalMovements, isRunning } = state;
 
         if (error || pc >= commands.length) {
             set({ isRunning: false });
-            // Check win condition functionality could go here or be a separate check
             return;
         }
 
@@ -177,36 +278,53 @@ export const useInterpreterStore = create<ProgramState & InterpreterActions>((se
 
         try {
             let nextGrid = currentGrid;
+            let nextLastPos = lastPos;
+            let nextTotalMovements = totalMovements;
 
-            // If it's the first command (START), initialize the grid
             if (cmd.type === 'START') {
                 nextGrid = createEmptyGrid(cmd.rows, cmd.cols);
-            } else if (cmd.type === 'COLOR') {
+                nextLastPos = { r: -1, c: -1 };
+                nextTotalMovements = 0;
+            } else if (cmd.type === 'COLOR' || cmd.type === 'GRID_COLOR') {
                 if (!nextGrid) throw new Error("Internal Error: Grid not initialized.");
 
-                // Validate bounds
-                if (cmd.row >= nextGrid.length) throw new Error(`Runtime Error on line ${cmd.lineNumber + 1}: Row ${cmd.row} out of bounds.`);
-                if (cmd.col >= nextGrid[0].length) throw new Error(`Runtime Error on line ${cmd.lineNumber + 1}: Column ${cmd.col} out of bounds.`);
+                let targetRow, targetCol;
+                if (cmd.type === 'COLOR') {
+                    targetRow = cmd.row;
+                    targetCol = cmd.col;
+                } else {
+                    targetRow = lastPos.r + cmd.deltaY;
+                    targetCol = lastPos.c + cmd.deltaX;
+                    nextTotalMovements += Math.abs(cmd.deltaX) + Math.abs(cmd.deltaY) + (cmd.count > 0 ? cmd.count - 1 : 0);
+                }
 
-                // Validate filling logic
-                // "if the numbers of cells to color + the initial column exceeds the number of defined columns"
-                if (cmd.col + cmd.count > nextGrid[0].length) {
+                // Validate bounds
+                if (targetRow < 0 || targetRow >= nextGrid.length) {
+                    throw new Error(`Runtime Error on line ${cmd.lineNumber + 1}: Row ${targetRow} out of bounds.`);
+                }
+                if (targetCol < 0 || targetCol >= nextGrid[0].length) {
+                    throw new Error(`Runtime Error on line ${cmd.lineNumber + 1}: Column ${targetCol} out of bounds.`);
+                }
+                if (targetCol + cmd.count > nextGrid[0].length) {
                     throw new Error(`Runtime Error on line ${cmd.lineNumber + 1}: Filling exceeds column bounds.`);
                 }
 
                 // Apply Color
-                // We need to clone the grid to maintain immutability for React
                 nextGrid = nextGrid.map(row => [...row]);
                 for (let i = 0; i < cmd.count; i++) {
-                    nextGrid[cmd.row][cmd.col + i] = { color: cmd.color };
+                    nextGrid[targetRow][targetCol + i] = { color: cmd.color };
                 }
+
+                // Update last position to the LAST colored cell
+                nextLastPos = { r: targetRow, c: targetCol + cmd.count - 1 };
             }
 
             set({
                 currentGrid: nextGrid,
+                lastPos: nextLastPos,
+                totalMovements: nextTotalMovements,
                 pc: pc + 1,
-                // Automatically stop if we reached the end
-                isRunning: pc + 1 < commands.length
+                isRunning: isRunning && pc + 1 < commands.length
             });
 
         } catch (e: any) {

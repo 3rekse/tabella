@@ -6,8 +6,10 @@ import { TableGrid } from './components/TableGrid';
 import { useInterpreterStore } from './lib/interpreter';
 import { generateRandomTarget } from './lib/targetGenerator';
 
+import './App.css';
+
 function App() {
-  const { currentGrid, targetGrid, setTargetGrid, loadProgram, sourceCode } = useInterpreterStore();
+  const { currentGrid, targetGrid, setTargetGrid, loadProgram, sourceCode, totalMovements, mode, isRunning, step } = useInterpreterStore();
 
   useEffect(() => {
     // Generate initial target on mount
@@ -24,33 +26,45 @@ function App() {
     loadProgram(sourceCode);
   }, [sourceCode]);
 
+  useEffect(() => {
+    let interval: any;
+    if (isRunning) {
+      interval = setInterval(() => {
+        step();
+      }, 300); // 300ms between steps
+    }
+    return () => clearInterval(interval);
+  }, [isRunning, step]);
+
   return (
-    <div className="flex flex-col h-screen bg-black text-white overflow-hidden selection:bg-blue-500/30">
-      <Controls />
+    <div className="app-shell">
+      <div className="app-glow-container selection:bg-purple-500/30">
+        <Controls />
 
-      <div className="flex-1 overflow-hidden">
-        <PanelGroup direction="horizontal" className="h-full">
+        <div className="flex-1 overflow-hidden min-h-0">
+          <PanelGroup direction="horizontal" className="h-full">
 
-          {/* AREA 1: Target */}
-          <Panel defaultSize={25} minSize={20} className="border-r border-zinc-800">
-            <TableGrid grid={targetGrid} label="Objective" />
-          </Panel>
+            {/* AREA 1: Target */}
+            <Panel defaultSize={25} minSize={20} className="border-r border-zinc-800">
+              <TableGrid grid={targetGrid} label="Objective" />
+            </Panel>
 
-          <PanelResizeHandle className="w-1 bg-zinc-950 hover:bg-blue-500/50 transition-colors" />
+            <PanelResizeHandle className="w-1 bg-zinc-950 hover:bg-purple-500/50 transition-colors" />
 
-          {/* AREA 2: Editor */}
-          <Panel defaultSize={40} minSize={30}>
-            <Editor />
-          </Panel>
+            {/* AREA 2: Editor */}
+            <Panel defaultSize={40} minSize={30}>
+              <Editor />
+            </Panel>
 
-          <PanelResizeHandle className="w-1 bg-zinc-950 hover:bg-blue-500/50 transition-colors" />
+            <PanelResizeHandle className="w-1 bg-zinc-950 hover:bg-purple-500/50 transition-colors" />
 
-          {/* AREA 3: Result */}
-          <Panel defaultSize={35} minSize={20} className="border-l border-zinc-800">
-            <TableGrid grid={currentGrid} label="Result" className="bg-zinc-900/50" />
-          </Panel>
+            {/* AREA 3: Result */}
+            <Panel defaultSize={35} minSize={20} className="border-l border-zinc-800">
+              <TableGrid grid={currentGrid} label="Result" className="bg-zinc-900/50 transition-colors" totalMovements={mode === 'GRID' ? totalMovements : undefined} />
+            </Panel>
 
-        </PanelGroup>
+          </PanelGroup>
+        </div>
       </div>
     </div>
   );

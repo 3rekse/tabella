@@ -6,9 +6,10 @@ interface TableGridProps {
     grid: Grid | null;
     label?: string;
     className?: string;
+    totalMovements?: number;
 }
 
-export const TableGrid: React.FC<TableGridProps> = ({ grid, label, className }) => {
+export const TableGrid: React.FC<TableGridProps> = ({ grid, label, className, totalMovements }) => {
     if (!grid) {
         return (
             <div className={clsx("flex flex-col items-center justify-center p-4 h-full text-zinc-500", className)}>
@@ -25,7 +26,17 @@ export const TableGrid: React.FC<TableGridProps> = ({ grid, label, className }) 
 
     return (
         <div className={clsx("flex flex-col h-full bg-zinc-900 overflow-hidden", className)}>
-            {label && <h3 className="py-2 px-4 text-sm font-semibold text-zinc-400 uppercase tracking-wider bg-zinc-950 border-b border-zinc-800">{label}</h3>}
+            {label && (
+                <div className="py-2 px-4 flex justify-between items-center bg-zinc-950 border-b border-zinc-800">
+                    <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">{label}</h3>
+                    {label === "Result" && typeof totalMovements === 'number' && (
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-zinc-500 font-mono tracking-tight uppercase">Movements:</span>
+                            <span className="text-xs font-bold text-blue-400 font-mono">{totalMovements}</span>
+                        </div>
+                    )}
+                </div>
+            )}
 
             <div className="flex-1 overflow-auto p-4 flex items-center justify-center custom-scrollbar">
                 <div
