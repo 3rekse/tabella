@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { generateChallengeTarget } from './targetGenerator';
 
 // Constants
 export const MAX_ROWS = 16;
@@ -57,6 +58,11 @@ export interface ProgramState {
     completionStatus: 'idle' | 'success' | 'failure';
     lastPos: { r: number, c: number };
     totalMovements: number;
+    timeLeft: number; // in seconds
+    isChallengeActive: boolean;
+    isLocked: boolean;
+    showCertificateModal: boolean;
+    lastChallengeTime: number | null; // Timestamp
 }
 
 interface InterpreterActions {
@@ -68,6 +74,11 @@ interface InterpreterActions {
     run: () => void;
     stop: () => void;
     loadProgram: (code: string, updateTarget?: boolean) => void;
+    startChallenge: () => void;
+    stopChallenge: () => void;
+    tickTimer: () => void;
+    calculateScore: () => number;
+    closeCertificateModal: () => void;
 }
 
 // Helpers
@@ -182,13 +193,26 @@ export const useInterpreterStore = create<ProgramState & InterpreterActions>((se
     completionStatus: 'idle',
     lastPos: { r: -1, c: -1 },
     totalMovements: 0,
+    timeLeft: 0,
+    isChallengeActive: false,
+    isLocked: false,
+    showCertificateModal: false,
+    lastChallengeTime: localStorage.getItem('tabella_last_challenge')
+        ? parseInt(localStorage.getItem('tabella_last_challenge') || '0')
+        : null,
 
     setMode: (mode) => {
         set({ mode });
         get().loadProgram(get().sourceCode);
     },
 
-    setTargetGrid: (grid) => set({ targetGrid: grid }),
+    setTargetGrid: (grid) => set({
+        targetGrid: grid,
+        isChallengeActive: false,
+        isLocked: false,
+        showCertificateModal: false,
+        timeLeft: 0
+    }),
 
     setSourceCode: (code) => {
         set({ sourceCode: code });
@@ -246,23 +270,32 @@ export const useInterpreterStore = create<ProgramState & InterpreterActions>((se
     },
 
     reset: () => {
-        // Re-initialize grid based on start command if exists
-        const { commands } = get();
+        const { commands, isChallengeActive, isLocked, timeLeft } = get();
         const startCmd = commands.find(c => c.type === 'START') as StartCommand | undefined;
 
+        const newState: Partial<ProgramState> = {
+            pc: 0,
+            error: null,
+            isRunning: false,
+            completionStatus: 'idle',
+            lastPos: { r: -1, c: -1 },
+            totalMovements: 0
+        };
+
         if (startCmd) {
-            set({
-                currentGrid: createEmptyGrid(startCmd.rows, startCmd.cols),
-                pc: 0,
-                error: null,
-                isRunning: false,
-                completionStatus: 'idle',
-                lastPos: { r: -1, c: -1 },
-                totalMovements: 0
-            });
+            newState.currentGrid = createEmptyGrid(startCmd.rows, startCmd.cols);
         } else {
-            set({ currentGrid: null, pc: 0, error: null, isRunning: false, completionStatus: 'idle', lastPos: { r: -1, c: -1 }, totalMovements: 0 });
+            newState.currentGrid = null;
         }
+
+        // Explicitly preserve challenge state if active
+        if (isChallengeActive) {
+            newState.isChallengeActive = isChallengeActive;
+            newState.isLocked = isLocked;
+            newState.timeLeft = timeLeft;
+        }
+
+        set(newState as ProgramState);
     },
 
     step: () => {
@@ -342,5 +375,98 @@ export const useInterpreterStore = create<ProgramState & InterpreterActions>((se
 
     stop: () => {
         set({ isRunning: false });
-    }
+    },
+
+    startChallenge: () => {
+        const { lastChallengeTime } = get();
+        const now = Date.now();
+        const LOCKOUT_PERIOD = 30 * 60 * 1000; // 30 mins
+
+        if (lastChallengeTime && (now - lastChallengeTime < LOCKOUT_PERIOD)) {
+            const remaining = Math.ceil((LOCKOUT_PERIOD - (now - lastChallengeTime)) / 60000);
+            set({ error: `Sfida bloccata. Riprova tra ${remaining} minuti.` });
+            return;
+        }
+
+        // Import generateChallengeTarget dynamically or just use the imported one (better)
+        const challengeTarget = generateChallengeTarget();
+
+        // Count rows that have at least one colored cell in the NEW target
+        const coloredRows = challengeTarget.reduce((count, row) => {
+            const hasColor = row.some(cell => cell.color !== null);
+            return count + (hasColor ? 1 : 0);
+        }, 0);
+
+        set({
+            targetGrid: challengeTarget,
+            timeLeft: coloredRows * 60,
+            isChallengeActive: true,
+            isLocked: false,
+            showCertificateModal: false,
+            lastChallengeTime: now,
+            pc: 0,
+            currentGrid: null,
+            error: null,
+            completionStatus: 'idle',
+            lastPos: { r: -1, c: -1 },
+            totalMovements: 0
+        });
+
+        localStorage.setItem('tabella_last_challenge', now.toString());
+
+        // Also reset the grid to match the start command
+        get().reset();
+    },
+
+    stopChallenge: () => {
+        set({
+            isChallengeActive: false,
+            isLocked: true,
+            showCertificateModal: true,
+            isRunning: false
+        });
+    },
+
+    tickTimer: () => {
+        const { timeLeft, isChallengeActive } = get();
+        if (!isChallengeActive) return;
+
+        if (timeLeft <= 1) {
+            set({ timeLeft: 0, isChallengeActive: false, isLocked: true, isRunning: false, showCertificateModal: true });
+        } else {
+            set({ timeLeft: timeLeft - 1 });
+        }
+    },
+
+    calculateScore: () => {
+        const { targetGrid, currentGrid } = get();
+        if (!targetGrid || !currentGrid) return 0;
+
+        let correctRows = 0;
+        const rows = targetGrid.length;
+        const cols = targetGrid[0].length;
+
+        for (let r = 0; r < rows; r++) {
+            const hasColorInTarget = targetGrid[r].some(cell => cell.color !== null);
+
+            // If target row is empty, we don't count it for score
+            if (!hasColorInTarget) continue;
+
+            let rowMatch = true;
+            for (let c = 0; c < cols; c++) {
+                const targetColor = targetGrid[r][c].color;
+                const currentColor = currentGrid[r][c]?.color || null;
+                if (targetColor !== currentColor) {
+                    rowMatch = false;
+                    break;
+                }
+            }
+            if (rowMatch) {
+                correctRows++;
+            }
+        }
+        return correctRows;
+    },
+
+    closeCertificateModal: () => set({ showCertificateModal: false })
 }));

@@ -3,6 +3,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { Controls } from './components/Controls';
 import { Editor } from './components/Editor';
 import { TableGrid } from './components/TableGrid';
+import { CertificateModal } from './components/CertificateModal';
 import { useInterpreterStore } from './lib/interpreter';
 import { generateRandomTarget } from './lib/targetGenerator';
 
@@ -66,6 +67,7 @@ function App() {
           </PanelGroup>
         </div>
       </div>
+      <CertificateModal />
     </div>
   );
 }

@@ -1,11 +1,11 @@
 import React, { useRef, useState } from 'react';
 import { useInterpreterStore } from '../lib/interpreter';
 import { clsx } from 'clsx';
-import { Eraser, HelpCircle } from 'lucide-react';
+import { Eraser, HelpCircle, Lock } from 'lucide-react';
 import { HelpModal } from './HelpModal';
 
 export const Editor: React.FC = () => {
-    const { sourceCode, setSourceCode, pc, isRunning, error, currentGrid, loadProgram } = useInterpreterStore();
+    const { sourceCode, setSourceCode, pc, isRunning, error, currentGrid, loadProgram, isLocked } = useInterpreterStore();
     const [isHelpOpen, setIsHelpOpen] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -28,7 +28,8 @@ export const Editor: React.FC = () => {
                     <div className="flex items-center gap-1">
                         <button
                             onClick={() => loadProgram('', false)}
-                            className="p-1 px-1.5 hover:bg-zinc-800 rounded transition-colors flex items-center gap-1.5 group"
+                            disabled={isLocked}
+                            className="p-1 px-1.5 hover:bg-zinc-800 rounded transition-colors flex items-center gap-1.5 group disabled:opacity-30 disabled:cursor-not-allowed"
                             title="Clear Code"
                         >
                             <Eraser size={14} className="group-hover:text-red-400 transition-colors" />
@@ -44,7 +45,15 @@ export const Editor: React.FC = () => {
                         </button>
                     </div>
                 </div>
-                {error && <span className="text-red-500 text-[10px] font-mono truncate max-w-[200px]" title={error}>{error}</span>}
+                <div className="flex items-center gap-3">
+                    {isLocked && (
+                        <div className="flex items-center gap-1.5 text-zinc-500 bg-zinc-900/50 px-2 py-0.5 rounded border border-zinc-800 animate-pulse">
+                            <Lock size={12} />
+                            <span className="text-[10px] font-bold uppercase tracking-wider">Locked</span>
+                        </div>
+                    )}
+                    {error && <span className="text-red-500 text-[10px] font-mono truncate max-w-[200px]" title={error}>{error}</span>}
+                </div>
             </div>
 
             <div className="relative flex-1 overflow-hidden font-mono text-sm leading-6">
@@ -71,14 +80,18 @@ export const Editor: React.FC = () => {
                 {/* Actual Input */}
                 <textarea
                     ref={textareaRef}
-                    className="absolute inset-0 w-full h-full p-4 bg-transparent text-zinc-300 resize-none focus:outline-none"
+                    className={clsx(
+                        "absolute inset-0 w-full h-full p-4 bg-transparent text-zinc-300 resize-none focus:outline-none transition-opacity duration-300",
+                        isLocked && "opacity-50 cursor-not-allowed"
+                    )}
                     value={sourceCode}
                     onChange={(e) => setSourceCode(e.target.value)}
                     onScroll={handleScroll}
                     spellCheck={false}
+                    readOnly={isLocked}
                     style={{
                         fontFamily: 'monospace',
-                        caretColor: '#fff',
+                        caretColor: isLocked ? 'transparent' : '#fff',
                         lineHeight: '1.5rem' // Match leading-6 (1.5rem = 24px)
                     }}
                     placeholder={`START 5#5\n3 R 0 0\n...`}

@@ -1,12 +1,52 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useInterpreterStore } from '../lib/interpreter';
 import { generateRandomTarget } from '../lib/targetGenerator';
-import { Play, StepForward, RotateCcw, Save, Upload, AlertCircle } from 'lucide-react';
+import { Play, StepForward, RotateCcw, Save, Upload, AlertCircle, Trophy, Timer } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export const Controls: React.FC = () => {
-    const { run, step, reset, loadProgram, sourceCode, isRunning, error, mode, setMode } = useInterpreterStore();
+    const {
+        run, step, reset, loadProgram, sourceCode, isRunning, error, mode, setMode,
+        isChallengeActive, timeLeft, startChallenge, stopChallenge, tickTimer, setTargetGrid
+    } = useInterpreterStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        let interval: any;
+        if (isChallengeActive) {
+            interval = setInterval(() => {
+                tickTimer();
+            }, 1000);
+
+            // Anti-reload protection
+            const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+                e.preventDefault();
+                e.returnValue = '';
+            };
+            window.addEventListener('beforeunload', handleBeforeUnload);
+
+            // Visibility protection (Anti-tab switch)
+            const handleVisibilityChange = () => {
+                if (document.hidden && isChallengeActive) {
+                    console.warn("Visibility lost during challenge!");
+                }
+            };
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+
+            return () => {
+                clearInterval(interval);
+                window.removeEventListener('beforeunload', handleBeforeUnload);
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+            };
+        }
+        return () => clearInterval(interval);
+    }, [isChallengeActive, tickTimer]);
+
+    const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
 
     const handleSave = () => {
         const blob = new Blob([sourceCode], { type: 'text/plain' });
@@ -41,7 +81,8 @@ export const Controls: React.FC = () => {
                     <select
                         value={mode}
                         onChange={(e) => setMode(e.target.value as 'TABLE' | 'GRID')}
-                        className="appearance-none bg-transparent text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent cursor-pointer outline-none hover:opacity-80 transition-opacity pr-6"
+                        disabled={isChallengeActive}
+                        className="appearance-none bg-transparent text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent cursor-pointer outline-none hover:opacity-80 transition-opacity pr-6 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <option value="TABLE" className="text-zinc-900 bg-zinc-100">TABLE</option>
                         <option value="GRID" className="text-zinc-900 bg-zinc-100">GRID</option>
@@ -59,7 +100,26 @@ export const Controls: React.FC = () => {
                 <ActionButton onClick={step} disabled={false} icon={<StepForward size={16} />} label="Step" />
                 <ActionButton onClick={reset} disabled={false} icon={<RotateCcw size={16} />} label="Reset" color="red" />
 
-                <ActionButton onClick={() => useInterpreterStore.getState().setTargetGrid(generateRandomTarget())} disabled={false} icon={<RotateCcw size={16} />} label="New Goal" />
+                <ActionButton onClick={() => setTargetGrid(generateRandomTarget())} disabled={isChallengeActive} icon={<RotateCcw size={16} />} label="New Goal" />
+
+                <div className="h-6 w-px bg-zinc-700 mx-2" />
+
+                <ActionButton
+                    onClick={isChallengeActive ? stopChallenge : startChallenge}
+                    disabled={false}
+                    icon={<Trophy size={16} className={isChallengeActive ? "text-yellow-500 animate-pulse" : ""} />}
+                    label={isChallengeActive ? "Stop Challenge" : "Start Challenge"}
+                    color={isChallengeActive ? 'red' : 'blue'}
+                />
+
+                {isChallengeActive && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 rounded-md border border-zinc-700 ml-2 animate-in slide-in-from-left-2 transition-all">
+                        <Timer size={16} className="text-emerald-400" />
+                        <span className="font-mono text-emerald-400 tabular-nums font-bold">
+                            {formatTime(timeLeft)}
+                        </span>
+                    </div>
+                )}
             </div>
 
             {error && (
@@ -81,7 +141,7 @@ export const Controls: React.FC = () => {
                     />
                     <ActionButton
                         onClick={() => fileInputRef.current?.click()}
-                        disabled={false}
+                        disabled={isChallengeActive}
                         icon={<Upload size={16} />}
                         label="Load"
                     />
