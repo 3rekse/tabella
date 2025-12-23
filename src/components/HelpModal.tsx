@@ -58,6 +58,26 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                     </section>
 
                     <section>
+                        <h3 className="text-emerald-400 font-semibold mb-3 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            Modalità MAZE (Labirinto)
+                        </h3>
+                        <div className="bg-zinc-950/50 rounded-lg p-4 font-mono text-sm border border-zinc-800/50 space-y-3">
+                            <div>
+                                <p className="text-zinc-500 mb-1">// Ruota il robot di 90, 180 o 270 gradi a sinistra</p>
+                                <p className="text-blue-400">ruota 1|2|3</p>
+                                <p className="text-zinc-400 text-xs mt-1">Es: <span className="text-zinc-300 italic">ruota 1</span> (ruota di 90°)</p>
+                            </div>
+                            <div>
+                                <p className="text-zinc-500 mb-1">// Muove il robot in avanti</p>
+                                <p className="text-emerald-500">muovi n</p>
+                                <p className="text-zinc-400 text-xs mt-1">Es: <span className="text-zinc-300 italic">muovi 2</span> (avanza di 2 posizioni)</p>
+                            </div>
+                            <p className="text-zinc-500 text-xs italic">NB: Se colpisci un muro rosso, il programma si ferma.</p>
+                        </div>
+                    </section>
+
+                    <section>
                         <h3 className="text-zinc-400 font-semibold mb-3">Colori Disponibili</h3>
                         <div className="flex gap-4">
                             <div className="flex items-center gap-2 text-sm text-zinc-300">

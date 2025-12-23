@@ -10,12 +10,21 @@ import { generateRandomTarget } from './lib/targetGenerator';
 import './App.css';
 
 function App() {
-  const { currentGrid, targetGrid, setTargetGrid, loadProgram, sourceCode, totalMovements, mode, isRunning, step } = useInterpreterStore();
+  const { currentGrid, targetGrid, setTargetGrid, loadProgram, sourceCode, totalMovements, mode, isRunning, step, mazeState, mazeScore } = useInterpreterStore();
 
   useEffect(() => {
-    // Generate initial target on mount
-    setTargetGrid(generateRandomTarget());
-  }, []);
+    // Generate initial target/maze only when switching TO this mode
+    // This prevents regenerating the maze on every render
+    if (mode === 'MAZE') {
+      const currentMazeState = useInterpreterStore.getState().mazeState;
+      if (!currentMazeState) {
+        // Only reset if there's no maze yet (initial load or mode switch)
+        useInterpreterStore.getState().reset();
+      }
+    } else {
+      setTargetGrid(generateRandomTarget());
+    }
+  }, [mode, setTargetGrid]);
 
   // Sync execution state is handled in store, but we can add effects here if needed.
   // For the re-parsing when source changes:
@@ -45,23 +54,26 @@ function App() {
         <div className="flex-1 overflow-hidden min-h-0">
           <PanelGroup direction="horizontal" className="h-full">
 
-            {/* AREA 1: Target */}
-            <Panel defaultSize={25} minSize={20} className="border-r border-zinc-800">
-              <TableGrid grid={targetGrid} label="Objective" />
-            </Panel>
-
-            <PanelResizeHandle className="w-1 bg-zinc-950 hover:bg-purple-500/50 transition-colors" />
+            {/* AREA 1: Target (Hidden in MAZE mode) */}
+            {mode !== 'MAZE' && (
+              <>
+                <Panel defaultSize={25} minSize={20} className="border-r border-zinc-800">
+                  <TableGrid grid={targetGrid} label="Objective" mode={mode} mazeState={mazeState} mazeScore={mazeScore} />
+                </Panel>
+                <PanelResizeHandle className="w-1 bg-zinc-950 hover:bg-purple-500/50 transition-colors" />
+              </>
+            )}
 
             {/* AREA 2: Editor */}
-            <Panel defaultSize={40} minSize={30}>
+            <Panel defaultSize={mode === 'MAZE' ? 40 : 40} minSize={30}>
               <Editor />
             </Panel>
 
             <PanelResizeHandle className="w-1 bg-zinc-950 hover:bg-purple-500/50 transition-colors" />
 
             {/* AREA 3: Result */}
-            <Panel defaultSize={35} minSize={20} className="border-l border-zinc-800">
-              <TableGrid grid={currentGrid} label="Result" className="bg-zinc-900/50 transition-colors" totalMovements={mode === 'GRID' ? totalMovements : undefined} />
+            <Panel defaultSize={mode === 'MAZE' ? 60 : 35} minSize={20} className="border-l border-zinc-800">
+              <TableGrid grid={currentGrid} label={mode === 'MAZE' ? "Maze" : "Result"} className="bg-zinc-900/50 transition-colors" totalMovements={mode === 'GRID' ? totalMovements : undefined} mode={mode} mazeState={mazeState} mazeScore={mazeScore} />
             </Panel>
 
           </PanelGroup>

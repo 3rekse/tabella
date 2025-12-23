@@ -7,7 +7,8 @@ import { clsx } from 'clsx';
 export const Controls: React.FC = () => {
     const {
         run, step, reset, loadProgram, sourceCode, isRunning, error, mode, setMode,
-        isChallengeActive, timeLeft, startChallenge, stopChallenge, tickTimer, setTargetGrid
+        isChallengeActive, timeLeft, startChallenge, stopChallenge, tickTimer, setTargetGrid,
+        mazeScore, mazeState
     } = useInterpreterStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -49,11 +50,22 @@ export const Controls: React.FC = () => {
     };
 
     const handleSave = () => {
-        const blob = new Blob([sourceCode], { type: 'text/plain' });
+        let content = sourceCode;
+        let extension = mode === 'GRID' ? 'grd' : (mode === 'MAZE' ? 'mze' : 'tbl');
+
+        // For MAZE mode, include the maze structure
+        if (mode === 'MAZE' && mazeState) {
+            const mazeData = {
+                code: sourceCode,
+                maze: mazeState
+            };
+            content = JSON.stringify(mazeData, null, 2);
+        }
+
+        const blob = new Blob([content], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const extension = mode === 'GRID' ? 'grd' : 'tbl';
         a.download = `program.${extension}`;
         document.body.appendChild(a);
         a.click();
@@ -67,6 +79,25 @@ export const Controls: React.FC = () => {
             const reader = new FileReader();
             reader.onload = (ev) => {
                 const text = ev.target?.result as string;
+
+                // Check if it's a .mze file with maze data
+                if (file.name.endsWith('.mze')) {
+                    try {
+                        const data = JSON.parse(text);
+                        if (data.code && data.maze) {
+                            // Switch to MAZE mode and load the maze state *before* loading the program
+                            // This ensures parseLine uses MAZE mode logic
+                            useInterpreterStore.setState({ mode: 'MAZE', mazeState: data.maze });
+
+                            // Then load the program (updateTarget is false because we just loaded the maze)
+                            loadProgram(data.code, false);
+                            return;
+                        }
+                    } catch (e) {
+                        // If parsing fails, treat as regular text file
+                    }
+                }
+
                 loadProgram(text, true);
             };
             reader.readAsText(file);
@@ -80,12 +111,13 @@ export const Controls: React.FC = () => {
                 <div className="relative group mr-4">
                     <select
                         value={mode}
-                        onChange={(e) => setMode(e.target.value as 'TABLE' | 'GRID')}
+                        onChange={(e) => setMode(e.target.value as 'TABLE' | 'GRID' | 'MAZE')}
                         disabled={isChallengeActive}
                         className="appearance-none bg-transparent text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent cursor-pointer outline-none hover:opacity-80 transition-opacity pr-6 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <option value="TABLE" className="text-zinc-900 bg-zinc-100">TABLE</option>
                         <option value="GRID" className="text-zinc-900 bg-zinc-100">GRID</option>
+                        <option value="MAZE" className="text-zinc-900 bg-zinc-100">MAZE</option>
                     </select>
                     <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-blue-400">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,9 +130,9 @@ export const Controls: React.FC = () => {
 
                 <ActionButton onClick={run} disabled={isRunning} icon={<Play size={16} />} label="Run" color="blue" />
                 <ActionButton onClick={step} disabled={false} icon={<StepForward size={16} />} label="Step" />
-                <ActionButton onClick={reset} disabled={false} icon={<RotateCcw size={16} />} label="Reset" color="red" />
+                <ActionButton onClick={() => reset()} disabled={false} icon={<RotateCcw size={16} />} label="Reset" color="red" />
 
-                <ActionButton onClick={() => setTargetGrid(generateRandomTarget())} disabled={isChallengeActive} icon={<RotateCcw size={16} />} label="New Goal" />
+                <ActionButton onClick={() => { if (mode === 'MAZE') reset(true); else setTargetGrid(generateRandomTarget()); }} disabled={isChallengeActive} icon={<RotateCcw size={16} />} label="New Goal" />
 
                 <div className="h-6 w-px bg-zinc-700 mx-2" />
 
@@ -120,6 +152,15 @@ export const Controls: React.FC = () => {
                         </span>
                     </div>
                 )}
+
+                {mode === 'MAZE' && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 rounded-md border border-blue-500/20 ml-2 animate-in fade-in transition-all">
+                        <Trophy size={14} className="text-blue-400" />
+                        <span className="font-mono text-blue-400 font-bold tabular-nums">
+                            Score: {mazeScore}
+                        </span>
+                    </div>
+                )}
             </div>
 
             {error && (
@@ -135,7 +176,7 @@ export const Controls: React.FC = () => {
                     <input
                         ref={fileInputRef}
                         type="file"
-                        accept=".tbl,.grd"
+                        accept=".tbl,.grd,.mze"
                         onChange={handleLoad}
                         className="hidden"
                     />
