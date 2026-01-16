@@ -185,8 +185,7 @@ export const generatePixelTarget = (): { grid: Grid, code: string } => {
                 const cStr = colorsStr[k];
                 rowCode += cStr === 'O' ? 'Off' : cStr;
                 if (k < 3) rowCode += ' + ';
-                const color = cStr === 'O' ? null : getColor(cStr);
-                // Apply to grid (logic repeated 4 times)
+
             }
             rowCode += ' )';
 
