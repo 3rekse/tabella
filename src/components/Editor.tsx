@@ -46,6 +46,19 @@ export const Editor: React.FC = () => {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
+                    {useInterpreterStore(s => s.mode === 'MATRIX' && s.solutionCode) && (
+                        <button
+                            onClick={() => {
+                                const code = useInterpreterStore.getState().solutionCode;
+                                if (code) setSourceCode(code);
+                            }}
+                            className="flex items-center gap-1.5 px-2 py-1 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 rounded border border-yellow-500/20 transition-colors text-[10px] font-bold uppercase tracking-wider"
+                            title="Show Solution"
+                        >
+                            <span className="text-lg leading-none">💡</span>
+                            <span className="hidden sm:inline">Solution</span>
+                        </button>
+                    )}
                     {isLocked && (
                         <div className="flex items-center gap-1.5 text-zinc-500 bg-zinc-900/50 px-2 py-0.5 rounded border border-zinc-800 animate-pulse">
                             <Lock size={12} />

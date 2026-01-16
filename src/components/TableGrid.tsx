@@ -9,7 +9,7 @@ interface TableGridProps {
     label: string;
     className?: string;
     totalMovements?: number;
-    mode: 'TABLE' | 'GRID' | 'MAZE';
+    mode: 'TABLE' | 'GRID' | 'MAZE' | 'MATRIX' | 'PIXEL';
     mazeState: {
         walls: MazeGrid['cells'];
         items: MazeGrid['items'];
@@ -25,6 +25,10 @@ const CellView: React.FC<{ cell: { color: string | null } }> = ({ cell }) => {
         'R': 'bg-red-500 shadow-[inset_0_0_10px_rgba(239,68,68,0.5)] border-red-400/30',
         'G': 'bg-green-500 shadow-[inset_0_0_10px_rgba(34,197,94,0.5)] border-green-400/30',
         'B': 'bg-blue-500 shadow-[inset_0_0_10px_rgba(59,130,246,0.5)] border-blue-400/30',
+        'Y': 'bg-yellow-400 shadow-[inset_0_0_10px_rgba(250,204,21,0.5)] border-yellow-300/30',
+        'C': 'bg-cyan-400 shadow-[inset_0_0_10px_rgba(34,211,238,0.5)] border-cyan-300/30',
+        'M': 'bg-fuchsia-400 shadow-[inset_0_0_10px_rgba(232,121,249,0.5)] border-fuchsia-300/30',
+        'W': 'bg-white shadow-[inset_0_0_15px_rgba(255,255,255,0.8)] border-white/50',
         null: 'bg-zinc-800/50 border-zinc-700/50'
     };
 
@@ -108,8 +112,8 @@ const MazeCellView: React.FC<{
 };
 
 export const TableGrid: React.FC<TableGridProps> = ({ grid, label, className, totalMovements, mode, mazeState, mazeScore }) => {
-    const rows = mode === 'MAZE' ? 16 : grid?.length || 0;
-    const cols = mode === 'MAZE' ? 16 : grid?.[0]?.length || 0;
+    const rows = (mode === 'MAZE' || mode === 'PIXEL' || mode === 'MATRIX') ? (mode === 'MATRIX' ? 8 : 16) : grid?.length || 0;
+    const cols = (mode === 'MAZE' || mode === 'PIXEL' || mode === 'MATRIX') ? (mode === 'MATRIX' ? 8 : 16) : grid?.[0]?.length || 0;
 
     return (
         <div className={clsx("flex flex-col h-full bg-zinc-900 overflow-hidden", className)}>
@@ -118,40 +122,62 @@ export const TableGrid: React.FC<TableGridProps> = ({ grid, label, className, to
                 <span className="text-[10px] font-mono text-zinc-500">{rows}x{cols}</span>
             </div>
 
-            <div className="flex-1 overflow-auto p-4 flex items-center justify-center custom-scrollbar">
-                <div
-                    className="grid gap-0"
-                    style={{
-                        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-                        width: 'fit-content'
-                    }}
-                >
-                    {mode === 'MAZE' && mazeState ? (
-                        mazeState.walls.map((row, rIndex) => (
-                            row.map((wall, cIndex) => {
-                                const item = mazeState.items.find(it => it.r === rIndex && it.c === cIndex);
-                                const isVisited = mazeState.visited.some(v => v.r === rIndex && v.c === cIndex);
-                                const isExit = mazeState.exit?.r === rIndex && mazeState.exit?.c === cIndex;
-                                return (
-                                    <MazeCellView
-                                        key={`${rIndex}-${cIndex}`}
-                                        walls={wall}
-                                        hasTurtle={mazeState.turtle.r === rIndex && mazeState.turtle.c === cIndex}
-                                        turtleDir={mazeState.turtle.dir}
-                                        isVisited={isVisited}
-                                        isExit={isExit}
-                                        item={item}
-                                    />
-                                );
-                            })
-                        ))
-                    ) : (
-                        grid?.map((row, rIndex) => (
-                            row.map((cell, cIndex) => (
-                                <CellView key={`${rIndex}-${cIndex}`} cell={cell} />
-                            ))
-                        ))
+            <div className="flex-1 overflow-auto p-4 flex items-center justify-center custom-scrollbar relative">
+                <div className="flex items-start gap-1">
+                    {/* Matrix Row Labels (Left) */}
+                    {mode === 'MATRIX' && (
+                        <div className="flex flex-col justify-center gap-0 pt-6">
+                            {Array.from({ length: 8 }, (_, i) => i + 1).map(num => (
+                                <div key={num} className="h-6 sm:h-8 flex items-center justify-end text-[10px] text-zinc-500 font-mono w-4">{num}</div>
+                            ))}
+                        </div>
                     )}
+
+                    <div className="flex flex-col">
+                        {/* Matrix Column Labels (Top) */}
+                        {mode === 'MATRIX' && (
+                            <div className="grid grid-cols-8 gap-0 mb-0.5" style={{ width: 'fit-content' }}>
+                                {Array.from({ length: 8 }, (_, i) => String.fromCharCode(65 + i)).map(char => (
+                                    <div key={char} className="w-6 sm:w-8 text-center text-[10px] text-zinc-500 font-mono leading-none">{char}</div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div
+                            className="grid gap-0"
+                            style={{
+                                gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+                                width: 'fit-content'
+                            }}
+                        >
+                            {mode === 'MAZE' && mazeState ? (
+                                mazeState.walls.map((row, rIndex) => (
+                                    row.map((wall, cIndex) => {
+                                        const item = mazeState.items.find(it => it.r === rIndex && it.c === cIndex);
+                                        const isVisited = mazeState.visited.some(v => v.r === rIndex && v.c === cIndex);
+                                        const isExit = mazeState.exit?.r === rIndex && mazeState.exit?.c === cIndex;
+                                        return (
+                                            <MazeCellView
+                                                key={`${rIndex}-${cIndex}`}
+                                                walls={wall}
+                                                hasTurtle={mazeState.turtle.r === rIndex && mazeState.turtle.c === cIndex}
+                                                turtleDir={mazeState.turtle.dir}
+                                                isVisited={isVisited}
+                                                isExit={isExit}
+                                                item={item}
+                                            />
+                                        );
+                                    })
+                                ))
+                            ) : (
+                                grid?.map((row, rIndex) => (
+                                    row.map((cell, cIndex) => (
+                                        <CellView key={`${rIndex}-${cIndex}`} cell={cell} />
+                                    ))
+                                ))
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 

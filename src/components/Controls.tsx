@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useInterpreterStore } from '../lib/interpreter';
-import { generateRandomTarget } from '../lib/targetGenerator';
+import { generateRandomTarget, generateMatrixTarget, generatePixelTarget } from '../lib/targetGenerator';
 import { Play, StepForward, RotateCcw, Save, Upload, AlertCircle, Trophy, Timer } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -51,7 +51,7 @@ export const Controls: React.FC = () => {
 
     const handleSave = () => {
         let content = sourceCode;
-        let extension = mode === 'GRID' ? 'grd' : (mode === 'MAZE' ? 'mze' : 'tbl');
+        let extension = mode === 'GRID' ? 'grd' : (mode === 'MAZE' ? 'mze' : (mode === 'MATRIX' ? 'mtx' : (mode === 'PIXEL' ? 'pxl' : 'tbl')));
 
         // For MAZE mode, include the maze structure
         if (mode === 'MAZE' && mazeState) {
@@ -96,6 +96,8 @@ export const Controls: React.FC = () => {
                     } catch (e) {
                         // If parsing fails, treat as regular text file
                     }
+                } else if (file.name.endsWith('.mtx')) {
+                    useInterpreterStore.setState({ mode: 'MATRIX' });
                 }
 
                 loadProgram(text, true);
@@ -111,13 +113,15 @@ export const Controls: React.FC = () => {
                 <div className="relative group mr-4">
                     <select
                         value={mode}
-                        onChange={(e) => setMode(e.target.value as 'TABLE' | 'GRID' | 'MAZE')}
+                        onChange={(e) => setMode(e.target.value as any)}
                         disabled={isChallengeActive}
                         className="appearance-none bg-transparent text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent cursor-pointer outline-none hover:opacity-80 transition-opacity pr-6 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <option value="TABLE" className="text-zinc-900 bg-zinc-100">TABLE</option>
                         <option value="GRID" className="text-zinc-900 bg-zinc-100">GRID</option>
                         <option value="MAZE" className="text-zinc-900 bg-zinc-100">MAZE</option>
+                        <option value="MATRIX" className="text-zinc-900 bg-zinc-100">MATRIX</option>
+                        <option value="PIXEL" className="text-zinc-900 bg-zinc-100">PIXEL</option>
                     </select>
                     <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-blue-400">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,7 +136,17 @@ export const Controls: React.FC = () => {
                 <ActionButton onClick={step} disabled={false} icon={<StepForward size={16} />} label="Step" />
                 <ActionButton onClick={() => reset()} disabled={false} icon={<RotateCcw size={16} />} label="Reset" color="red" />
 
-                <ActionButton onClick={() => { if (mode === 'MAZE') reset(true); else setTargetGrid(generateRandomTarget()); }} disabled={isChallengeActive} icon={<RotateCcw size={16} />} label="New Goal" />
+                <ActionButton onClick={() => {
+                    if (mode === 'MAZE') reset(true);
+                    else if (mode === 'MATRIX') {
+                        const { grid, code } = generateMatrixTarget();
+                        setTargetGrid(grid, code);
+                    } else if (mode === 'PIXEL') {
+                        const { grid, code } = generatePixelTarget();
+                        setTargetGrid(grid, code);
+                    }
+                    else setTargetGrid(generateRandomTarget());
+                }} disabled={isChallengeActive} icon={<RotateCcw size={16} />} label="New Goal" />
 
                 <div className="h-6 w-px bg-zinc-700 mx-2" />
 
@@ -176,7 +190,7 @@ export const Controls: React.FC = () => {
                     <input
                         ref={fileInputRef}
                         type="file"
-                        accept=".tbl,.grd,.mze"
+                        accept=".tbl,.grd,.mze,.mtx"
                         onChange={handleLoad}
                         className="hidden"
                     />

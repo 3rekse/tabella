@@ -95,6 +95,47 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                         </div>
                     </section>
 
+                    <section>
+                        <h3 className="text-zinc-400 font-semibold mb-3 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-500"></span>
+                            Modalità MATRIX (Scheda)
+                        </h3>
+                        <div className="bg-zinc-950/50 rounded-lg p-4 font-mono text-sm border border-zinc-800/50 space-y-3">
+                            <div>
+                                <p className="text-zinc-500 mb-1">// Accende (+) o Spegne (-) righe e colonne</p>
+                                <p className="text-fuchsia-400">+ A ... - 1</p>
+                                <p className="text-zinc-400 text-xs mt-1">Es: <span className="text-zinc-300 italic">+ A</span> (Accende colonna A), <span className="text-zinc-300 italic">- 3</span> (Spegne riga 3)</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section>
+                        <h3 className="text-yellow-400 font-semibold mb-3 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>
+                            Modalità PIXEL (Grafica)
+                        </h3>
+                        <div className="bg-zinc-950/50 rounded-lg p-4 font-mono text-sm border border-zinc-800/50 space-y-3">
+                            <div className="mb-2">
+                                <span className="text-xs uppercase bg-yellow-500/10 text-yellow-400 px-2 py-0.5 rounded border border-yellow-500/20">Importante</span>
+                                <p className="text-zinc-400 text-xs mt-1">Ogni riga di codice corrisponde esattamente a una riga dello schermo (0-15).</p>
+                            </div>
+                            <div>
+                                <p className="text-zinc-500 mb-1">// Colori e Loop</p>
+                                <p className="text-yellow-400">R, G, B, O</p>
+                                <p className="text-zinc-400 text-xs mt-1">
+                                    <span className="block mb-1"><span className="text-zinc-300">R</span> = Rosso, <span className="text-zinc-300">G</span> = Verde, <span className="text-zinc-300">O</span> = Spento</span>
+                                    <span className="block mb-1"><span className="text-zinc-300">RG</span> = Giallo (R+G), <span className="text-zinc-300">RGB</span> = Bianco</span>
+                                    <span className="block"><span className="text-zinc-300">R + B</span> = Pixel Rosso poi Pixel Blu</span>
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-zinc-500 mb-1">// Ripetizione</p>
+                                <p className="text-purple-400">16 * ( R )</p>
+                                <p className="text-zinc-400 text-xs mt-1">Ripete il comando R per 16 volte.</p>
+                            </div>
+                        </div>
+                    </section>
+
                     <section className="pt-6 border-t border-zinc-800/50">
                         <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-5">
                             <p className="text-sm leading-relaxed text-zinc-300 text-center italic">

@@ -5,7 +5,7 @@ import { Editor } from './components/Editor';
 import { TableGrid } from './components/TableGrid';
 import { CertificateModal } from './components/CertificateModal';
 import { useInterpreterStore } from './lib/interpreter';
-import { generateRandomTarget } from './lib/targetGenerator';
+import { generateRandomTarget, generateMatrixTarget, generatePixelTarget } from './lib/targetGenerator';
 
 import './App.css';
 
@@ -21,6 +21,12 @@ function App() {
         // Only reset if there's no maze yet (initial load or mode switch)
         useInterpreterStore.getState().reset();
       }
+    } else if (mode === 'MATRIX') {
+      const { grid, code } = generateMatrixTarget();
+      setTargetGrid(grid, code);
+    } else if (mode === 'PIXEL') {
+      const { grid, code } = generatePixelTarget();
+      setTargetGrid(grid, code);
     } else {
       setTargetGrid(generateRandomTarget());
     }
@@ -52,12 +58,12 @@ function App() {
         <Controls />
 
         <div className="flex-1 overflow-hidden min-h-0">
-          <PanelGroup direction="horizontal" className="h-full">
+          <PanelGroup direction="horizontal" className="h-full" id="main-layout">
 
             {/* AREA 1: Target (Hidden in MAZE mode) */}
             {mode !== 'MAZE' && (
               <>
-                <Panel defaultSize={25} minSize={20} className="border-r border-zinc-800">
+                <Panel id="objective" order={1} defaultSize={25} minSize={20} className="border-r border-zinc-800">
                   <TableGrid grid={targetGrid} label="Objective" mode={mode} mazeState={mazeState} mazeScore={mazeScore} />
                 </Panel>
                 <PanelResizeHandle className="w-1 bg-zinc-950 hover:bg-purple-500/50 transition-colors" />
@@ -65,14 +71,14 @@ function App() {
             )}
 
             {/* AREA 2: Editor */}
-            <Panel defaultSize={mode === 'MAZE' ? 40 : 40} minSize={30}>
+            <Panel id="editor" order={2} defaultSize={mode === 'MAZE' ? 40 : 40} minSize={30}>
               <Editor />
             </Panel>
 
             <PanelResizeHandle className="w-1 bg-zinc-950 hover:bg-purple-500/50 transition-colors" />
 
             {/* AREA 3: Result */}
-            <Panel defaultSize={mode === 'MAZE' ? 60 : 35} minSize={20} className="border-l border-zinc-800">
+            <Panel id="result" order={3} defaultSize={mode === 'MAZE' ? 60 : 35} minSize={20} className="border-l border-zinc-800">
               <TableGrid grid={currentGrid} label={mode === 'MAZE' ? "Maze" : "Result"} className="bg-zinc-900/50 transition-colors" totalMovements={mode === 'GRID' ? totalMovements : undefined} mode={mode} mazeState={mazeState} mazeScore={mazeScore} />
             </Panel>
 
