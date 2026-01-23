@@ -29,7 +29,7 @@ export const CertificateModal: React.FC = () => {
     if (!showCertificateModal) return null;
 
     const score = calculateScore();
-    const totalPossible = targetGrid ? targetGrid.length : 0;
+    const totalPossible = mode === 'MAZE' ? (targetGrid ? targetGrid.length : 0) : 10;
 
 
     const handleGeneratePDF = () => {
@@ -88,7 +88,8 @@ export const CertificateModal: React.FC = () => {
 
         doc.setTextColor(150, 150, 150);
         doc.setFontSize(12);
-        doc.text(`(Righe completate correttamente)`, 105, 208, { align: 'center' });
+        const scoreLabel = mode === 'MAZE' ? "(Punti Maze)" : "(Punteggio calcolato)";
+        doc.text(scoreLabel, 105, 208, { align: 'center' });
 
         if (mode === 'GRID') {
             doc.setTextColor(200, 200, 200);

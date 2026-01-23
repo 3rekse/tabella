@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { generateChallengeTarget, generateMatrixTarget } from './targetGenerator';
+import { generateChallengeTarget, generateMatrixTarget, generatePixelTarget } from './targetGenerator';
 import { generateMaze, type MazeGrid } from './mazeGenerator';
 
 // Constants
@@ -856,6 +856,10 @@ export const useInterpreterStore = create<ProgramState & InterpreterActions>((se
             const result = generateMatrixTarget();
             challengeTarget = result.grid;
             solutionCode = result.code;
+        } else if (mode === 'PIXEL') {
+            const result = generatePixelTarget();
+            challengeTarget = result.grid;
+            solutionCode = result.code;
         } else {
             challengeTarget = generateChallengeTarget();
         }
@@ -927,6 +931,30 @@ export const useInterpreterStore = create<ProgramState & InterpreterActions>((se
             // Formula: int(pxOK * 5 / 32) / 4
             const factor = Math.floor((pxOK * 5) / 32);
             return factor / 4;
+        } else if (mode === 'GRID' || mode === 'TABLE') {
+            let correctCells = 0;
+            let totalCells = 0;
+            const rows = targetGrid.length;
+            const cols = targetGrid[0].length;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    totalCells++;
+                    const targetColor = targetGrid[r][c].color;
+                    const currentColor = (currentGrid[r] && currentGrid[r][c]) ? currentGrid[r][c].color : null;
+
+                    if (currentColor === targetColor) {
+                        correctCells++;
+                    } else if (targetColor !== null && currentColor === null) {
+                        correctCells -= 2;
+                    }
+                }
+            }
+
+            if (totalCells === 0) return 0;
+            const rawScore = (correctCells / totalCells) * 10;
+            // 0 to 10 with steps of 0.25
+            return Math.max(0, Math.floor(rawScore * 4) / 4);
         }
 
         return 0;
