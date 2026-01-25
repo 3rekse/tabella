@@ -607,6 +607,7 @@ export const useInterpreterStore = create<ProgramState & InterpreterActions>((se
             }
             newState.mazeScore = 0;
             newState.currentGrid = createEmptyGrid(16, 16);
+            newState.targetGrid = createEmptyGrid(16, 16); // Initialize targetGrid for MAZE
         } else if (mode === 'MATRIX') {
             newState.currentGrid = createEmptyGrid(8, 8);
             newState.completionStatus = 'idle'; // Reset completion status
@@ -635,7 +636,7 @@ export const useInterpreterStore = create<ProgramState & InterpreterActions>((se
     },
 
     step: () => {
-        let { commands, pc, mode, isRunning, mazeState, mazeScore, currentGrid, lastPos, totalMovements } = get();
+        let { commands, pc, mode, isRunning, mazeState, mazeScore, currentGrid, lastPos, totalMovements, isChallengeActive } = get();
 
         if (!isRunning || pc >= commands.length) {
             set({ isRunning: false });
@@ -738,6 +739,14 @@ export const useInterpreterStore = create<ProgramState & InterpreterActions>((se
                         nextMazeState!.visited = nextVisited;
                         nextMazeState!.turtle = { ...nextMazeState!.turtle, r: currR, c: currC };
                         nextMazeScore = currScore;
+
+                        // Check for exit reach in MAZE mode during challenge
+                        const exit = nextMazeState?.exit;
+                        if (isChallengeActive && exit && currR === exit.r && currC === exit.c) {
+                            setTimeout(() => {
+                                useInterpreterStore.getState().stopChallenge();
+                            }, 500);
+                        }
                     } else {
                         throw new Error(`Comando ${cmd.type} non supportato in modalità MAZE.`);
                     }
@@ -864,12 +873,14 @@ export const useInterpreterStore = create<ProgramState & InterpreterActions>((se
             challengeTarget = generateChallengeTarget();
         }
 
-        const coloredRows = challengeTarget.reduce((count, row) => count + (row.some(cell => cell.color !== null) ? 1 : 0), 0);
+        let timeLeft = 20 * 60; // Default 20 minutes
+        if (mode === 'MAZE') timeLeft = 40 * 60;
+        else if (mode === 'MATRIX') timeLeft = 30 * 60;
 
         set({
             targetGrid: challengeTarget,
             solutionCode: solutionCode,
-            timeLeft: coloredRows * 60,
+            timeLeft,
             isChallengeActive: true,
             isLocked: false,
             showCertificateModal: false,

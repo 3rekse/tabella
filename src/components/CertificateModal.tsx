@@ -29,7 +29,7 @@ export const CertificateModal: React.FC = () => {
     if (!showCertificateModal) return null;
 
     const score = calculateScore();
-    const totalPossible = mode === 'MAZE' ? (targetGrid ? targetGrid.length : 0) : 10;
+    const totalPossible = mode === 'MAZE' ? 8 : 10;
 
 
     const handleGeneratePDF = () => {
@@ -131,6 +131,10 @@ export const CertificateModal: React.FC = () => {
                     if (cell.color === 'R') doc.setFillColor(239, 68, 68);
                     else if (cell.color === 'G') doc.setFillColor(34, 197, 94);
                     else if (cell.color === 'B') doc.setFillColor(59, 130, 246);
+                    else if (cell.color === 'W') doc.setFillColor(255, 255, 255);
+                    else if (cell.color === 'Y') doc.setFillColor(255, 240, 0);
+                    else if (cell.color === 'C') doc.setFillColor(0, 255, 255);
+                    else if (cell.color === 'M') doc.setFillColor(255, 0, 255);
                     else doc.setFillColor(60, 60, 60);
 
                     doc.rect(startX + c * cellSize, startY + r * cellSize, cellSize, cellSize, 'F');
