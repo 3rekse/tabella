@@ -602,6 +602,7 @@ export const useInterpreterStore = create<ProgramState & InterpreterActions>((se
                 if (copiedMaze) {
                     copiedMaze.items = copiedMaze.items.map(item => ({ ...item, collected: false }));
                     copiedMaze.visited = [{ r: 8, c: 8 }];
+                    copiedMaze.turtle = { r: 8, c: 8, dir: 0 };
                     newState.mazeState = copiedMaze;
                 }
             }

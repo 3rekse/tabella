@@ -63,7 +63,7 @@ function App() {
             {/* AREA 1: Target (Hidden in MAZE mode) */}
             {mode !== 'MAZE' && (
               <>
-                <Panel id="objective" order={1} defaultSize={25} minSize={20} className="border-r border-zinc-800">
+                <Panel id="objective" order={1} defaultSize={35} minSize={20} className="border-r border-zinc-800">
                   <TableGrid grid={targetGrid} label="Objective" mode={mode} mazeState={mazeState} mazeScore={mazeScore} />
                 </Panel>
                 <PanelResizeHandle className="w-1 bg-zinc-950 hover:bg-purple-500/50 transition-colors" />
@@ -71,14 +71,14 @@ function App() {
             )}
 
             {/* AREA 2: Editor */}
-            <Panel id="editor" order={2} defaultSize={mode === 'MAZE' ? 40 : 40} minSize={30}>
+            <Panel id="editor" order={2} defaultSize={20} minSize={15}>
               <Editor />
             </Panel>
 
             <PanelResizeHandle className="w-1 bg-zinc-950 hover:bg-purple-500/50 transition-colors" />
 
             {/* AREA 3: Result */}
-            <Panel id="result" order={3} defaultSize={mode === 'MAZE' ? 60 : 35} minSize={20} className="border-l border-zinc-800">
+            <Panel id="result" order={3} defaultSize={mode === 'MAZE' ? 80 : 45} minSize={20} className="border-l border-zinc-800">
               <TableGrid grid={currentGrid} label={mode === 'MAZE' ? "Maze" : "Result"} className="bg-zinc-900/50 transition-colors" totalMovements={mode === 'GRID' ? totalMovements : undefined} mode={mode} mazeState={mazeState} mazeScore={mazeScore} />
             </Panel>
 

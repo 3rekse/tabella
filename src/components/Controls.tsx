@@ -133,7 +133,7 @@ export const Controls: React.FC = () => {
                 <div className="h-6 w-px bg-zinc-700 mx-2" />
 
                 <ActionButton onClick={run} disabled={isRunning} icon={<Play size={16} />} label="Run" color="blue" />
-                {mode !== 'GRID' && <ActionButton onClick={step} disabled={false} icon={<StepForward size={16} />} label="Step" />}
+                {mode !== 'GRID' && mode !== 'MAZE' && <ActionButton onClick={step} disabled={false} icon={<StepForward size={16} />} label="Step" />}
                 <ActionButton onClick={() => reset()} disabled={false} icon={<RotateCcw size={16} />} label="Reset" color="red" />
 
                 <ActionButton onClick={() => {
