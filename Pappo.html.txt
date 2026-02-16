@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Umani - Coscienza e Libero Arbitrio</title>
+    <style>
+        :root {
+            --color-mente: #00d4ff;
+            --color-cuore: #ff2d55;
+            --color-pancia: #ffae00;
+            --bg-dark: #050508;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-dark);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        }
+
+        .interface {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-weight: 200;
+            letter-spacing: 8px;
+            margin-bottom: 0;
+            opacity: 0.8;
+        }
+
+        .instruction {
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.5);
+            margin-top: -10px;
+        }
+
+        .centers-container {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            pointer-events: auto;
+        }
+
+        .center-node {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: rgba(0,0,0,0.3);
+            user-select: none;
+            position: relative;
+        }
+
+        .center-node span {
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            opacity: 0.6;
+        }
+
+        /* Colori e stati */
+        .mente:hover { border-color: var(--color-mente); box-shadow: 0 0 20px var(--color-mente); }
+        .cuore:hover { border-color: var(--color-cuore); box-shadow: 0 0 20px var(--color-cuore); }
+        .pancia:hover { border-color: var(--color-pancia); box-shadow: 0 0 20px var(--color-pancia); }
+
+        .active-mente { border-color: var(--color-mente); background: rgba(0, 212, 255, 0.2); box-shadow: 0 0 40px var(--color-mente); }
+        .active-cuore { border-color: var(--color-cuore); background: rgba(255, 45, 85, 0.2); box-shadow: 0 0 40px var(--color-cuore); }
+        .active-pancia { border-color: var(--color-pancia); background: rgba(255, 174, 0, 0.2); box-shadow: 0 0 40px var(--color-pancia); }
+
+        #harmony-msg {
+            margin-top: 30px;
+            font-style: italic;
+            height: 20px;
+            transition: opacity 1s;
+            opacity: 0;
+            color: #fff;
+            text-shadow: 0 0 10px #fff;
+        }
+
+        /* Animazione clic */
+        .center-node:active { transform: scale(0.9); }
+    </style>
+</head>
+<body>
+
+    <canvas id="starsCanvas"></canvas>
+
+    <div class="interface">
+        <h1>UMANI</h1>
+        <p class="instruction">Sviluppa l'armonia dei tre centri</p>
+
+        <div class="centers-container">
+            <div id="mente" class="center-node mente" onclick="toggleCenter('mente')"><span>MENTE</span></div>
+            <div id="cuore" class="center-node cuore" onclick="toggleCenter('cuore')"><span>CUORE</span></div>
+            <div id="pancia" class="center-node pancia" onclick="toggleCenter('pancia')"><span>PANCIA</span></div>
+        </div>
+
+        <div id="harmony-msg">La tua coscienza illumina l'umanità</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('starsCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let particles = [];
+        let trails = [];
+        let state = { mente: false, cuore: false, pancia: false };
+        let harmony = false;
+
+        // Inizializzazione Canvas
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Classe Particella (Umani-Stelle)
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.size = Math.random() * 2;
+                this.speedX = (Math.random() - 0.5) * 0.5;
+                this.speedY = (Math.random() - 0.5) * 0.5;
+                this.alpha = Math.random();
+            }
+            update(mouseX, mouseY) {
+                if (harmony) {
+                    // Legge del Destino Comune: seguono la luce guida
+                    let dx = mouseX - this.x;
+                    let dy = mouseY - this.y;
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 300) {
+                        this.x += dx * 0.02;
+                        this.y += dy * 0.02;
+                    }
+                    this.alpha = 1;
+                } else {
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                    if (this.x < 0 || this.x > width) this.speedX *= -1;
+                    if (this.y < 0 || this.y > height) this.speedY *= -1;
+                }
+            }
+            draw() {
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Creazione stelle
+        for (let i = 0; i < 150; i++) {
+            particles.push(new Particle());
+        }
+
+        let mouse = { x: -1000, y: -1000 };
+        window.addEventListener('mousemove', e => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+            if (harmony) {
+                // Crea la scia (Modello di riferimento)
+                trails.push({ x: mouse.x, y: mouse.y, life: 100 });
+            }
+        });
+
+        function toggleCenter(type) {
+            state[type] = !state[type];
+            document.getElementById(type).classList.toggle(`active-${type}`);
+            
+            // Feedback vibrazione se disponibile
+            if ("vibrate" in navigator) navigator.vibrate(50);
+
+            checkHarmony();
+        }
+
+        function checkHarmony() {
+            if (state.mente && state.cuore && state.pancia) {
+                harmony = true;
+                document.getElementById('harmony-msg').style.opacity = "1";
+            } else {
+                harmony = false;
+                document.getElementById('harmony-msg').style.opacity = "0";
+            }
+        }
+
+        function animate() {
+            // Effetto scia per il background
+            ctx.fillStyle = `rgba(5, 5, 8, ${harmony ? 0.1 : 0.3})`;
+            ctx.fillRect(0, 0, width, height);
+
+            // Disegna le scie del leader
+            trails.forEach((t, i) => {
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, t.life / 10, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${t.life / 100})`;
+                ctx.fill();
+                t.life -= 2;
+                if (t.life <= 0) trails.splice(i, 1);
+            });
+
+            particles.forEach(p => {
+                p.update(mouse.x, mouse.y);
+                p.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
+	
+	
